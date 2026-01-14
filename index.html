@@ -13,6 +13,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js"></script>
+    <!-- Leaflet Rotate Plugin -->
+    <script src="https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate-src.js"></script>
 
     <style>
         body { margin:0; padding:0; display:flex; height:100vh; font-family:-apple-system,Arial,sans-serif; overflow:hidden; background:#f0f2f5; flex-direction: column; }
@@ -531,6 +533,8 @@
         function initMap(data, isRestoring) {
             if(map) map.remove();
            map = L.map('map', {
+               rotate: true, // Enable rotation
+               touchRotate: true, // Enable touch rotation
                zoomControl: false,
                zoomSnap: 0.1,         
                zoomDelta: 0.5,      
@@ -1343,7 +1347,12 @@
         }
 
         function generatePopupHtml(m) {
-            var content = `<div style="font-weight:bold;font-size:16px;">${m.id}</div><div style="font-size:13px;color:#555;">Code: <b>${m.code || '-'}</b></div><div style="font-size:12px;color:#555;">N: ${m.n} | E: ${m.e}</div><div style="font-size:12px;color:#555;">Zone: ${m.zone} | Type: ${m.type}</div>`;
+            // New Navigation Link next to the name
+            var navLink = `<a href="https://www.google.com/maps/dir/?api=1&destination=${m.lat},${m.lng}" target="_blank" title="Navigate" style="text-decoration:none; font-size:16px; margin-left: 8px;">🚀</a>`;
+            
+            // Modified header to include nav link
+            var content = `<div style="font-weight:bold;font-size:16px; display: flex; align-items: center;">${m.id}${navLink}</div><div style="font-size:13px;color:#555;">Code: <b>${m.code || '-'}</b></div><div style="font-size:12px;color:#555;">N: ${m.n} | E: ${m.e}</div><div style="font-size:12px;color:#555;">Zone: ${m.zone} | Type: ${m.type}</div>`;
+            
             if (m.isAsBuilt) content += `<div style="color:blue; text-shadow: 1px 1px 0 #00FF00; font-weight:bold; font-size:12px;">(As-built Pos.)</div>`;
             
             if (m.freq && m.freq !== "None") {
