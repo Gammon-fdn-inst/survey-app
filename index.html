@@ -772,10 +772,12 @@
                     } else {
                         // Calculate M Status
                         var checks = p.mChecks || [];
-                        var checkCount = checks.filter(c => c === 'v').length;
-                        var freq = p.freq;
+                        var checkCount = checks.filter(c => c === 'v' || c === 'V').length;
                         
-                        if (freq === 'Daily') {
+                        // Robust includes logic to avoid blank space issues
+                        var freqLower = (p.freq || "").toLowerCase();
+                        
+                        if (freqLower.includes('daily') && !freqLower.includes('twice')) {
                              var todayIndex = -1;
                              if (p.mDates) {
                                  todayIndex = p.mDates.indexOf(todayStr);
@@ -787,7 +789,7 @@
                                  statusStr = "Missing";
                                  color = "red";
                              }
-                        } else if (freq === 'Twice per day') {
+                        } else if (freqLower.includes('twice per day')) {
                              var todayIndex = -1;
                              if (p.mDates) {
                                  todayIndex = p.mDates.indexOf(todayStr);
@@ -803,7 +805,7 @@
                              } else {
                                  statusStr = "Missing"; color = "red";
                              }
-                        } else if (freq === 'Twice a week') {
+                        } else if (freqLower.includes('twice a week')) {
                             if (checkCount >= 2) {
                                 statusStr = "Done"; color = "#00e600";
                             } else if (checkCount === 1) {
@@ -813,7 +815,7 @@
                                 statusStr = "Missing";
                                 color = "red";
                             }
-                        } else if (freq === 'Weekly') {
+                        } else if (freqLower.includes('weekly')) {
                              if (checkCount >= 1) {
                                 statusStr = "Done"; color = "#00e600";
                             } else {
@@ -1699,14 +1701,20 @@
                  var m = markers.find(x=>x.id===id);
                  if(m) {
                     if (isMonitoringMode) {
-                        // "Twice per day" conditional logic
-                        if (m.freq === 'Twice per day' && m.status === 'Missing') {
-                            m.status = "1st Read"; 
-                            m.color = "#add8e6"; // 1st read light blue
-                            idsO.push(id);
+                        // "Twice per day" conditional logic using robust includes
+                        if (m.freq && m.freq.toLowerCase().includes('twice per day')) {
+                            if (m.status === 'Missing') {
+                                m.status = "1st Read";
+                                m.color = "#add8e6"; // 1st read light blue
+                                idsO.push(id);
+                            } else {
+                                m.status = "Done";
+                                m.color = "#00e600"; // Assume done (v) after update
+                                idsV.push(id);
+                            }
                         } else {
-                            m.status = "Done"; 
-                            m.color = "#00e600"; // Assume done (v) after update
+                            m.status = "Done";
+                            m.color = "#00e600";
                             idsV.push(id);
                         }
                     } else {
