@@ -903,10 +903,8 @@
                                  todayIndex = p.mDates.indexOf(todayStr);
                                  if (todayIndex === -1) {
                                      // 容錯機制：如果後端給的是 1-6-2026 或 01-06-2026 格式
-                                     var altDateStr1 = today.getDate() + '-' + (today.getMonth() + 1) + '-' + today.getFullYear();
-                                     var altDateStr2 = ('0'+today.getDate()).slice(-2) + '-' + ('0'+(today.getMonth() + 1)).slice(-2) + '-' + today.getFullYear();
+                                     var altDateStr1 = today.getFullYear() + '-' + ('0' + (today.getMonth() + 1)).slice(-2) + '-' + ('0' + today.getDate()).slice(-2);
                                      todayIndex = p.mDates.indexOf(altDateStr1);
-                                     if (todayIndex === -1) todayIndex = p.mDates.indexOf(altDateStr2);
                                  }
                              }
                              if (todayIndex > -1 && (checks[todayIndex] === 'v' || checks[todayIndex] === 'V')) {
@@ -932,13 +930,6 @@
                              var todayIndex = -1;
                              if (p.mDates) {
                                  todayIndex = p.mDates.indexOf(todayStr);
-                                 if (todayIndex === -1) {
-                                     // 容錯機制：如果後端給的是 1-6-2026 (如圖所示) 或 01-06-2026 格式
-                                     var altDateStr1 = today.getDate() + '-' + (today.getMonth() + 1) + '-' + today.getFullYear();
-                                     var altDateStr2 = ('0'+today.getDate()).slice(-2) + '-' + ('0'+(today.getMonth() + 1)).slice(-2) + '-' + today.getFullYear();
-                                     todayIndex = p.mDates.indexOf(altDateStr1);
-                                     if (todayIndex === -1) todayIndex = p.mDates.indexOf(altDateStr2);
-                                 }
                              }
                              
                              if (todayIndex > -1) {
