@@ -894,15 +894,22 @@
                     } else {
                         // Calculate M Status
                         var checks = p.mChecks || [];
-                        var checkCount = checks.filter(c => c === 'v').length;
+                        var checkCount = checks.filter(c => c === 'v' || c === 'V').length;
                         var freq = p.freq;
 
                         if (freq === 'Daily') {
                              var todayIndex = -1;
                              if (p.mDates) {
                                  todayIndex = p.mDates.indexOf(todayStr);
+                                 if (todayIndex === -1) {
+                                     // 容錯機制：如果後端給的是 1-6-2026 或 01-06-2026 格式
+                                     var altDateStr1 = today.getDate() + '-' + (today.getMonth() + 1) + '-' + today.getFullYear();
+                                     var altDateStr2 = ('0'+today.getDate()).slice(-2) + '-' + ('0'+(today.getMonth() + 1)).slice(-2) + '-' + today.getFullYear();
+                                     todayIndex = p.mDates.indexOf(altDateStr1);
+                                     if (todayIndex === -1) todayIndex = p.mDates.indexOf(altDateStr2);
+                                 }
                              }
-                             if (todayIndex > -1 && checks[todayIndex] === 'v') {
+                             if (todayIndex > -1 && (checks[todayIndex] === 'v' || checks[todayIndex] === 'V')) {
                                  statusStr = "Done"; color = "#00e600";
                              } else {
                                  statusStr = "Missing"; color = "red";
@@ -925,7 +932,15 @@
                              var todayIndex = -1;
                              if (p.mDates) {
                                  todayIndex = p.mDates.indexOf(todayStr);
+                                 if (todayIndex === -1) {
+                                     // 容錯機制：如果後端給的是 1-6-2026 (如圖所示) 或 01-06-2026 格式
+                                     var altDateStr1 = today.getDate() + '-' + (today.getMonth() + 1) + '-' + today.getFullYear();
+                                     var altDateStr2 = ('0'+today.getDate()).slice(-2) + '-' + ('0'+(today.getMonth() + 1)).slice(-2) + '-' + today.getFullYear();
+                                     todayIndex = p.mDates.indexOf(altDateStr1);
+                                     if (todayIndex === -1) todayIndex = p.mDates.indexOf(altDateStr2);
+                                 }
                              }
+                             
                              if (todayIndex > -1) {
                                  var curCheck = checks[todayIndex];
                                  if (curCheck === 'v' || curCheck === 'V') {
@@ -1800,11 +1815,14 @@
                     if (isMonitoringMode) {
                         if (m.freq === 'Twice per day') {
                             if (m.status === "Half Done") {
-                                // 第二次上傳，標為綠色 (Done)，記錄 v
+                                // 已經是藍色 (Half Done)，第二次點擊要變綠色 (Done) 並回傳 v
                                 m.status = "Done"; m.color = "#00e600";
                                 batchV.push(id);
+                            } else if (m.status === "Done") {
+                                // 已經是綠色，重複點擊維持綠色並回傳 v
+                                batchV.push(id);
                             } else {
-                                // 第一次上傳，標為藍色 (Half Done)，記錄 o
+                                // 紅色 (Missing) 第一次點擊，變藍色 (Half Done) 並回傳 o
                                 m.status = "Half Done"; m.color = "#007bff";
                                 batchO.push(id);
                             }
@@ -1824,7 +1842,7 @@
             
             var requests = [];
             
-            // 將 o 和 v 分開發送，明確在 payload 中指定 status 和 value，供後端自由讀取
+            // 發送 O 的請求（第一次點擊）
             if (batchO.length > 0) {
                 requests.push(
                     fetch(API_URL, {
@@ -1834,14 +1852,16 @@
                             sheet: currentSheet, 
                             ids: batchO, 
                             date: dateStr,
-                            status: 'o', // 直接作為參數供後端取用 (e.g. payload.status)
-                            val: 'o',    // 直接作為參數供後端取用 (e.g. payload.val)
-                            value: 'o'   // 直接作為參數供後端取用 (e.g. payload.value)
+                            // 以下三個屬性都放 o，確保後端怎樣都能讀到
+                            status: 'o',
+                            val: 'o',
+                            value: 'o'
                         })
                     }).then(res => res.text())
                 );
             }
             
+            // 發送 V 的請求（第二次點擊）
             if (batchV.length > 0) {
                 requests.push(
                     fetch(API_URL, {
@@ -1859,6 +1879,7 @@
                 );
             }
 
+            // 發送安裝 (I_) 請求
             if (batchI.length > 0) {
                 requests.push(
                     fetch(API_URL, {
