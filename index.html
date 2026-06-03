@@ -1789,10 +1789,11 @@
             document.getElementById('loading-overlay').style.display = 'flex';
             var ids = Array.from(batchSelection);
             
-            // 收集每個選中點將要回傳給後端的讀數狀態 o 或 v
-            var updateVals = []; 
+            var batchO = [];
+            var batchV = [];
+            var batchI = [];
             
-            // Optimistic UI Update
+            // Optimistic UI Update & Grouping
             ids.forEach(id => {
                  var m = markers.find(x=>x.id===id);
                  if(m) {
@@ -1801,41 +1802,89 @@
                             if (m.status === "Half Done") {
                                 // 第二次上傳，標為綠色 (Done)，記錄 v
                                 m.status = "Done"; m.color = "#00e600";
-                                updateVals.push('v');
+                                batchV.push(id);
                             } else {
                                 // 第一次上傳，標為藍色 (Half Done)，記錄 o
                                 m.status = "Half Done"; m.color = "#007bff";
-                                updateVals.push('o');
+                                batchO.push(id);
                             }
                         } else {
                             m.status = "Done"; m.color = "#00e600"; // Assume done after update
-                            updateVals.push('v');
+                            batchV.push(id);
                         }
                     } else {
                         m.status = "Installed"; m.color = colorInstalled; m.installDate = dateStr;
-                        updateVals.push('v');
+                        batchI.push(id);
                     }
                     if(m.layer.setStyle) m.layer.setStyle({fillColor:m.color});
-                     updatePopupContent(m);
+                    updatePopupContent(m);
                  }
             });
             renderList(markers);
             
-            fetch(API_URL, {
-                method: 'POST', body: JSON.stringify({
-                    action: 'batch_install', 
-                    sheet: currentSheet, 
-                    ids: ids, 
-                    date: dateStr,
-                    checkVals: updateVals // <- 將計算好的 o 和 v 對應列表傳送給後端
-                })
-            }).then(res => res.text()).then(txt => {
-                alert(txt); 
+            var requests = [];
+            
+            // 將 o 和 v 分開發送，明確在 payload 中指定 status 和 value，供後端自由讀取
+            if (batchO.length > 0) {
+                requests.push(
+                    fetch(API_URL, {
+                        method: 'POST', 
+                        body: JSON.stringify({
+                            action: 'batch_install', 
+                            sheet: currentSheet, 
+                            ids: batchO, 
+                            date: dateStr,
+                            status: 'o', // 直接作為參數供後端取用 (e.g. payload.status)
+                            val: 'o',    // 直接作為參數供後端取用 (e.g. payload.val)
+                            value: 'o'   // 直接作為參數供後端取用 (e.g. payload.value)
+                        })
+                    }).then(res => res.text())
+                );
+            }
+            
+            if (batchV.length > 0) {
+                requests.push(
+                    fetch(API_URL, {
+                        method: 'POST', 
+                        body: JSON.stringify({
+                            action: 'batch_install', 
+                            sheet: currentSheet, 
+                            ids: batchV, 
+                            date: dateStr,
+                            status: 'v',
+                            val: 'v',
+                            value: 'v'
+                        })
+                    }).then(res => res.text())
+                );
+            }
+
+            if (batchI.length > 0) {
+                requests.push(
+                    fetch(API_URL, {
+                        method: 'POST', 
+                        body: JSON.stringify({
+                            action: 'batch_install', 
+                            sheet: currentSheet, 
+                            ids: batchI, 
+                            date: dateStr,
+                            status: 1
+                        })
+                    }).then(res => res.text())
+                );
+            }
+            
+            Promise.all(requests).then(responses => {
+                var msg = responses[0] || "Update successful";
+                alert(msg); 
                 // Clear selection so UI resets correctly after reload
                 clearBatchSelection();
                 if(!isMonitoringMode) toggleBatchMode(); 
                 reloadMap(); 
-            }).catch(err => { alert("Error"); document.getElementById('loading-overlay').style.display = 'none'; });
+            }).catch(err => { 
+                alert("Error"); 
+                document.getElementById('loading-overlay').style.display = 'none'; 
+            });
         }
         
         function openBatchInstallModal() {
